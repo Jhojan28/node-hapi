@@ -5,6 +5,8 @@ const inert = require('inert')
 const handlebars = require('handlebars')
 const vision = require('vision')
 const path = require('path')
+const routes = require('./routes')
+const site = require('./controllers/site')
 
 const server = Hapi.server({
   port: process.env.PORT || 3000,
@@ -19,24 +21,26 @@ const server = Hapi.server({
 async function init () {
   try {
     await server.register(inert)
-    server.route({
-      method: 'GET',
-      path: '/home',
-      handler: (req, h) => {
-        return h.file('index.html')
-      }
+    await server.register(vision)
+
+    server.state('user', {
+      ttl: 1000*60*60*24*7,
+      isSecure: process.env.NODE_ENV === 'prod',
+      encoding: 'base64json'
     })
-  
-    server.route({
-      method: 'GET',
-      path: '/{param*}',
-      handler: {
-        directory: {
-          path: '.',
-          index: ['index.html']
-        }
-      }
+
+    server.views({
+      engines: {
+        hbs: handlebars
+      },
+      relativeTo: __dirname,
+      path: 'views',
+      layout: true,
+      layoutPath: 'views'
     })
+
+    server.ext('onPreResponse', site.fileNotFound)
+    server.route(routes)
     await server.start()
   } catch (e) {
     console.error(e)
@@ -45,5 +49,13 @@ async function init () {
 
   console.log(`Server launched in: ${server.info.uri}`)
 }
+
+process.on('unhandledRejection', error => {
+  console.error(`unhandledRejection ${error.message}`)
+})
+
+process.on('unhandledException', error => {
+  console.error(`unhandledException ${error.message}`)
+})
 
 init()
