@@ -2,16 +2,12 @@
 
 const Hapi = require('@hapi/hapi')
 const inert = require('inert')
-const handlebars = require('handlebars')
+const handlebars = require('./lib/helpers')
 const vision = require('vision')
 const path = require('path')
 const routes = require('./routes')
 const site = require('./controllers/site')
-
-handlebars.registerHelper('answerNumber', answers => {
-  const keys  = Object.keys(answers)
-  return keys.length
-})
+const methods = require('./lib/methods')
 
 const server = Hapi.server({
   port: process.env.PORT || 3000,
@@ -27,6 +23,8 @@ async function init () {
   try {
     await server.register(inert)
     await server.register(vision)
+
+    server.method('setAnswerRight', methods.setAnswerRight)
 
     server.state('user', {
       ttl: 1000*60*60*24*7,
